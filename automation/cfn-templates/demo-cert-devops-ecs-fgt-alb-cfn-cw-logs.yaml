@@ -1,0 +1,84 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Discription Here:
+
+# ------------------------------------------
+
+
+# ==========================================
+Metadata: {}
+# Metadata:
+
+
+# ==========================================
+# Parameters {}
+Parameters:
+
+  # ------------------------------------------
+  # --- The Project Name
+  ProjectName:
+    Description: "Name of this particular project"
+    ConstraintDescription: "Specify name of this project"
+    Type: String
+
+  # ------------------------------------------
+  # --- Existing S3 Bucket Name
+  ProjectBucket:
+    Description: "S3 Bucket Location"
+    ConstraintDescription: "Must be an existing S3 Bucket."
+    Type: String
+
+  # ------------------------------------------
+  # --- Primary AWS Service 
+  ProjectPrefix:
+    Description: "Primary AWS Service"
+    Type: String
+
+
+# ==========================================
+Conditions: {}
+# Conditions:
+
+
+# ==========================================
+Resources:
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #         PUBLIC ECS LOGS DEFINITION
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  # ------------------------------------------
+  # --- Public ECS Log Group
+  PublicEcsLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    # .............................
+    Properties:
+      # .............................
+      LogGroupName: !Sub "/${ProjectBucket}/${ProjectPrefix}"
+      # .............................
+      Tags: 
+      - 
+        Key: "Project"
+        Value: "demo"
+      - 
+        Key: "Function"
+        Value: "cert-devops"
+      - 
+        Key: "Reference"
+        Value: "cfn"
+      - 
+        Key: "Name"
+        Value: !Sub "${ProjectName}"
+        
+
+# ==========================================
+# Outputs: {}
+Outputs:
+
+  # ------------------------------------------
+  # --- Public ECS Log Group Name
+  PublicEcsLogGroupName:
+    Description: "Public ECS Log Group Name"
+    Value: !Ref PublicEcsLogGroup

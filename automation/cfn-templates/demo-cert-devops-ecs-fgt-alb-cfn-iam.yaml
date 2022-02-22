@@ -1,0 +1,80 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Create a Task Execution Role for ECS Containers.
+
+# ------------------------------------------
+
+
+# ==========================================
+Metadata: {}
+# Metadata:
+
+
+# ==========================================
+# Parameters: {}
+Parameters:
+
+  # ------------------------------------------
+  # --- The Project Name
+  ProjectName:
+    Description: "Name of this particular project"
+    Type: String
+
+
+# ==========================================
+Conditions: {}
+# Conditions:
+
+
+# ==========================================
+Resources:
+
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #         IAM SERVICE POLICIES
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  # ------------------------------------------
+  # --- ECS Task Execution Role Definition
+  IamEcsTaskExecutionRole:
+    # .............................
+    Type: "AWS::IAM::Role"
+    Properties:
+      # .............................
+      Path: "/"
+      RoleName: !Sub "${ProjectName}-task-execute-role"
+      Description: "AWS ECS Task Execution Role."
+      # ---
+      ManagedPolicyArns: 
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+      # ---
+      AssumeRolePolicyDocument: "{\"Version\":\"2008-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+      # ---
+      Tags: 
+        - 
+          Key: "Project"
+          Value: "demo"
+        - 
+          Key: "Function"
+          Value: "cert-devops"
+        - 
+          Key: "Reference"
+          Value: "cfn"
+
+# ==========================================
+# Outputs: {}
+Outputs:
+
+  # ------------------------------------------
+  # --- ECS Task Execution Role Name
+  IamEcsTaskExecuteRole:
+    Description: "ECS Service Role Name"
+    Value: !Ref IamEcsTaskExecutionRole
+
+  # ------------------------------------------
+  # --- ECS Task Execution Role ARN
+  IamEcsTaskExecuteRoleArn:
+    Description: "ECS Service Role ARN"
+    Value: !GetAtt IamEcsTaskExecutionRole.Arn

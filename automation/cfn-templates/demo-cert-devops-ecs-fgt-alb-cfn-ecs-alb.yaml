@@ -1,0 +1,139 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  An Application Loadbalancer and its associated Listener, serving public 
+  subnets in multiple availablity zones.
+
+# ------------------------------------------
+
+
+# ==========================================
+Metadata: {}
+# Metadata:
+
+
+# ==========================================
+# Parameters {}
+Parameters:
+
+  # ------------------------------------------
+  # --- The Project Name
+  ProjectName:
+    Description: "Name of this particular project"
+    Type: String
+
+  # ------------------------------------------
+  # ---Public Subnet AZ-A
+  PublicEcsSubnetIdA:
+    Description: "Public Subnet ID AZ-A"
+    Type: AWS::EC2::Subnet::Id
+
+  # ------------------------------------------
+  # ---Public Subnet AZ-B
+  PublicEcsSubnetIdB:
+    Description: "Public Subnet ID AZ-B"
+    Type: AWS::EC2::Subnet::Id
+
+  # ------------------------------------------
+  # --- Public Security Group Resource ID
+  PublicEcsALBSecurityGroupId:
+    Description: "Public ALB Security Group ID"
+    Type: "AWS::EC2::SecurityGroup::Id"
+
+  # ------------------------------------------
+  # --- Public ECS Target Group ARN
+  PublicEcsTargetGroupArn:
+    Description: "Loadbalancer Target Group ARN"
+    Type: String
+
+
+# ==========================================
+Conditions: {}
+# Conditions:
+
+
+# ==========================================
+Resources:
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #     LOAD BALANCER DEFINITIONS
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  # ------------------------------------------
+  # --- Load Balancer Listener Definition
+  PublicEcsALBListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    # .............................
+    Properties:
+      # .............................
+      Protocol: "HTTP"
+      Port: 80
+      LoadBalancerArn: !Ref PublicEcsLoadBalancer
+      # .............................
+      DefaultActions:
+        -
+          TargetGroupArn: !Ref PublicEcsTargetGroupArn
+          Type: "forward"
+
+  # ------------------------------------------
+  # --- Load Balancer Definition
+  PublicEcsLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    # .............................
+    Properties:
+      # .............................
+      Name: "ecs-fgt-alb"
+      # .............................
+      Tags:
+        -
+          Key: "Name"
+          Value: !Sub "${ProjectName}-alb"
+        - 
+          Key: "Project"
+          Value: "demo"
+        - 
+          Key: "Function"
+          Value: "cert-devops"
+        - 
+          Key: "Reference"
+          Value: "cfn"
+      # .............................      
+      Type: "application"
+      Scheme: "internet-facing"
+      IpAddressType: "ipv4"
+      # .............................
+      Subnets:
+        - !Ref PublicEcsSubnetIdA
+        - !Ref PublicEcsSubnetIdB
+      SecurityGroups: 
+        - !Ref PublicEcsALBSecurityGroupId
+      # .............................
+      #LoadBalancerAttributes:
+      #  -
+      #    Key: "access_logs.s3.enabled"
+      #    Value: "false"
+      #  -
+      #    Key: "access_logs.s3.bucket"
+      #    Value: ""
+      #  -
+      #    Key: "access_logs.s3.prefix"
+      #    Value: ""
+
+
+# ==========================================
+# Outputs: {}
+Outputs:
+
+  # ------------------------------------------
+  # --- ECS Load Balancer ARN
+  PublicEcsLoadBalancerARN:
+    Description: "Loadbalancer ARN"
+    Value: !Ref PublicEcsLoadBalancer
+
+  # ------------------------------------------
+  # --- ECS Load Balancer DNS
+  PublicEcsLoadBalancerDNS:
+    Description: "Loadbalancer DNS"
+    Value: !GetAtt PublicEcsLoadBalancer.DNSName
+

@@ -1,0 +1,109 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  A Target Group for the Application Loadbalancer associated with the ECS 
+  Cluster service.
+
+# ------------------------------------------
+
+
+# ==========================================
+Metadata: {}
+# Metadata:
+
+
+# ==========================================
+# Parameters {}
+Parameters:
+
+  # ------------------------------------------
+  # --- The Project Name
+  ProjectName:
+    Description: "Name of this particular project"
+    Type: String
+
+  # ------------------------------------------
+  # --- AWS-Specific Parameter VPC Id
+  VPCID:
+    Description: "VPC to associate with load balancer"
+    Type: "AWS::EC2::VPC::Id"
+
+
+# ==========================================
+Conditions: {}
+# Conditions:
+
+
+# ==========================================
+Resources:
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #     TARGET GROUP DEFINITIONS
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  # ------------------------------------------
+  # --- Target Group Definition
+  PublicEcsTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    # .............................
+    Properties:
+      Name: "ecs-fgt-alb-tg"
+      # .............................
+      Tags:
+        -
+          Key: "Name"
+          Value: !Sub "${ProjectName}-tg"
+        - 
+          Key: "Project"
+          Value: "demo"
+        - 
+          Key: "Function"
+          Value: "cert-devops"
+        - 
+          Key: "Reference"
+          Value: "cfn"
+      # .............................
+      VpcId: !Ref VPCID
+      Port: 80
+      Protocol: "HTTP"
+      TargetType: "ip"
+      # .............................
+      HealthCheckEnabled: true
+      HealthCheckProtocol: "HTTP"
+      HealthCheckPort: "traffic-port"
+      HealthCheckPath: "/"
+      Matcher: 
+        HttpCode: "200"
+      # .............................
+      # Reduce for Responsiveness
+      # Default 30
+      HealthCheckIntervalSeconds: 5
+      # Default 5
+      HealthCheckTimeoutSeconds: 2
+      # Default 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      # .............................
+      TargetGroupAttributes: 
+        - 
+          # Default 300 reduce for debug responsiveness
+          Key: "deregistration_delay.timeout_seconds"
+          Value: "30"
+        - 
+          Key: "slow_start.duration_seconds"
+          Value: "0"
+        - 
+          Key: "load_balancing.algorithm.type"
+          Value: "round_robin"
+
+
+# ==========================================
+# Outputs: {}
+Outputs:
+
+  # ------------------------------------------
+  # --- Public ECS Target Group ARN
+  PublicEcsTargetGroupArn:
+    Description: "Loadbalancer Target Group ARN"
+    Value: !Ref PublicEcsTargetGroup

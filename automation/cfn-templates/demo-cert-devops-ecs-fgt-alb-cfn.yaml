@@ -1,0 +1,200 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  This template is the top level stack of a two-level hierarchical nested 
+  infrastructure declaration of cloudformation stacks.
+
+  Orchestration is controlled via a bash shell script included in the git 
+  project repository, i.e. automation/provision-infrastructure-cfn-templates.sh
+
+  Nested template components include:
+
+  Various IAM Role Authorizations.
+  A Virtual Private Cloud.
+  A Virtual Private Cloud.
+  A Public Subnet Security Group definition.
+  An Application Load Balancer.
+  A Load Balancer Target Group.
+  An ECS Cluster, Service and Task Definition.
+
+# ------------------------------------------
+
+
+# ==========================================
+Metadata: {}
+# Metadata:
+
+
+# ==========================================
+# Parameters {}
+Parameters:
+
+  # ------------------------------------------
+  # --- The Project Name
+  ProjectName:
+    Description: "Name of this particular project"
+    ConstraintDescription: "Specify name of this project"
+    Type: String
+    Default: "demo-cert-devops-ecs-fgt-alb"
+    AllowedPattern: (^[a-z0-9]([a-z0-9-]*(\.[a-z0-9])?)*$)
+
+  # ------------------------------------------
+  # --- Existing S3 Bucket Name
+  ProjectBucket:
+    Description: "S3 Bucket Location including prefixes."
+    ConstraintDescription: "Must be an existing S3 Bucket."
+    Type: String
+    Default: "demo-cert-devops"
+    MinLength: 3
+    MaxLength: 63
+    AllowedPattern:
+      (?!^(\d{1,3}\.){3}\d{1,3}$)(^[a-z0-9]([a-z0-9-]*(\.[a-z0-9])?)*$(?<!\-))
+
+  # ------------------------------------------
+  # --- S3 Bucket Folder Prefix
+  ProjectPrefix:
+    Description: "Project previx denoting primary aws service."
+    ConstraintDescription: "Must be S3 folder name compatible."
+    Type: String
+    Default: "ecs"
+    AllowedPattern: (^[a-z0-9]([a-z0-9/-]*(\.[a-z0-9])?)*$(?<!\-))
+
+
+# ==========================================
+Conditions: {}
+# Conditions:
+
+
+# ==========================================
+Resources:
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #         NESTED STACK DECLARATIONS
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  # ------------------------------------------
+  # --- IAM Definitions
+  IamDef:
+    Type: "AWS::CloudFormation::Stack"
+    # .............................
+    Properties:
+      TemplateURL:
+        !Sub "https://${ProjectBucket}.s3.${AWS::Region}.amazonaws.com/${ProjectPrefix}/${ProjectName}/cfn-templates/${ProjectName}-cfn-iam.yaml"
+      Parameters:
+        ProjectName:
+          !Ref ProjectName
+      TimeoutInMinutes: 7
+
+  # ------------------------------------------
+  # --- VPC Definitions
+  VPCDef:
+    Type: "AWS::CloudFormation::Stack"
+    # .............................
+    Properties:
+      TemplateURL:
+        !Sub "https://${ProjectBucket}.s3.${AWS::Region}.amazonaws.com/${ProjectPrefix}/${ProjectName}/cfn-templates/${ProjectName}-cfn-vpc.yaml"
+      Parameters:
+        ProjectName:
+          !Ref ProjectName
+      TimeoutInMinutes: 7
+
+  # ------------------------------------------
+  # --- Security Group Definitions
+  SecurityGroupDefs:
+    Type: "AWS::CloudFormation::Stack"
+    # .............................
+    Properties:
+      TemplateURL:
+        !Sub "https://${ProjectBucket}.s3.${AWS::Region}.amazonaws.com/${ProjectPrefix}/${ProjectName}/cfn-templates/${ProjectName}-cfn-vpc-sg.yaml"
+      Parameters:
+        ProjectName:
+          !Ref ProjectName
+        VPCID:
+          !GetAtt VPCDef.Outputs.VPCID
+      TimeoutInMinutes: 7
+
+  # ------------------------------------------
+  # --- ECS Target Group Definitions
+  PublicEcsTargetGroupDef:
+    Type: "AWS::CloudFormation::Stack"
+    # .............................
+    Properties:
+      TemplateURL:
+        !Sub "https://${ProjectBucket}.s3.${AWS::Region}.amazonaws.com/${ProjectPrefix}/${ProjectName}/cfn-templates/${ProjectName}-cfn-ecs-tg.yaml"
+      Parameters:
+        ProjectName:
+          !Ref ProjectName
+        VPCID:
+          !GetAtt VPCDef.Outputs.VPCID
+      TimeoutInMinutes: 5
+
+  # ------------------------------------------
+  # --- ECS Load Balancer Definitions
+  PublicEcsLoadBalancerDef:
+    Type: "AWS::CloudFormation::Stack"
+    # .............................
+    Properties:
+      TemplateURL:
+        !Sub "https://${ProjectBucket}.s3.${AWS::Region}.amazonaws.com/${ProjectPrefix}/${ProjectName}/cfn-templates/${ProjectName}-cfn-ecs-alb.yaml"
+      Parameters:
+        ProjectName:
+          !Ref ProjectName
+        PublicEcsSubnetIdA:
+          !GetAtt VPCDef.Outputs.PublicEcsSubnetIdA
+        PublicEcsSubnetIdB:
+          !GetAtt VPCDef.Outputs.PublicEcsSubnetIdB
+        PublicEcsALBSecurityGroupId:
+          !GetAtt SecurityGroupDefs.Outputs.PublicEcsALBSecurityGroupId
+        PublicEcsTargetGroupArn:
+          !GetAtt PublicEcsTargetGroupDef.Outputs.PublicEcsTargetGroupArn
+      TimeoutInMinutes: 5
+
+  # ------------------------------------------
+  # --- ECS Task Logs Group Definitions
+  PublicEcsLogsGroupDefs:
+    Type: "AWS::CloudFormation::Stack"
+    # .............................
+    Properties:
+      TemplateURL:
+        !Sub "https://${ProjectBucket}.s3.${AWS::Region}.amazonaws.com/${ProjectPrefix}/${ProjectName}/cfn-templates/${ProjectName}-cfn-cw-logs.yaml"
+      Parameters:
+        ProjectName:
+          !Ref ProjectName
+        ProjectBucket:
+          !Ref ProjectBucket
+        ProjectPrefix:
+          !Ref ProjectPrefix
+      TimeoutInMinutes: 7
+
+  # ------------------------------------------
+  # --- ECS Cluster Service Task Definitions
+  PublicEcsClusterDef:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn: "PublicEcsLoadBalancerDef"
+    # .............................
+    Properties:
+      TemplateURL:
+        !Sub "https://${ProjectBucket}.s3.${AWS::Region}.amazonaws.com/${ProjectPrefix}/${ProjectName}/cfn-templates/${ProjectName}-cfn-ecs.yaml"
+      Parameters:
+        ProjectName:
+          !Ref ProjectName
+        ProjectPrefix:
+          !Ref ProjectPrefix
+        PublicEcsSecurityGroupId:
+          !GetAtt SecurityGroupDefs.Outputs.PublicEcsSecurityGroupId
+        PublicEcsSubnetIdA:
+          !GetAtt VPCDef.Outputs.PublicEcsSubnetIdA
+        PublicEcsSubnetIdB:
+          !GetAtt VPCDef.Outputs.PublicEcsSubnetIdB
+        PublicEcsTargetGroupArn:
+          !GetAtt PublicEcsTargetGroupDef.Outputs.PublicEcsTargetGroupArn
+        IamEcsTaskExecutionRoleArn:
+          !GetAtt IamDef.Outputs.IamEcsTaskExecuteRoleArn
+        PublicEcsLogGroupName:
+          !GetAtt PublicEcsLogsGroupDefs.Outputs.PublicEcsLogGroupName
+      TimeoutInMinutes: 7
+
+
+# ==========================================
+Outputs: {}
+# Outputs:

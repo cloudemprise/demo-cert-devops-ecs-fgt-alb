@@ -1,0 +1,189 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Here is a security group for the ECS Cluster and a security group for 
+  the loadbalancer. The security group for the ECS Cluster accepts all ports 
+  coming from the loadbalancer. Private Subnets have been scrubed.
+
+# ------------------------------------------
+
+
+# ==========================================
+Metadata: {}
+# Metadata:
+
+
+# ==========================================
+# Parameters {}
+Parameters:
+
+  # ------------------------------------------
+  # --- The Project Name
+  ProjectName:
+    Description: "Name of this particular project"
+    Type: String
+
+  # ------------------------------------------
+  # --- AWS-Specific Parameter VPC Id
+  VPCID:
+    Description: "VPC to create the SG into"
+    Type: "AWS::EC2::VPC::Id"
+
+
+# ==========================================
+Conditions: {}
+# Conditions:
+
+
+# ==========================================
+Resources:
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #         SECURITY GROUP DEFINITIONS
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  # ------------------------------------------
+  # --- Public ECS Cluster Security Group (Ingress)
+  PublicEcsSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    # .............................
+    Properties:
+      GroupDescription: "Public ECS Cluster Security Group"
+      GroupName: !Sub "${ProjectName}-sg-pub-${AWS::Region}"
+      VpcId: !Ref VPCID
+      # .............................
+      Tags:
+        -
+          Key: "Name"
+          Value: !Sub "pub-${ProjectName}"
+        - 
+          Key: "Project"
+          Value: "demo"
+        - 
+          Key: "Function"
+          Value: "cert-devops"
+        - 
+          Key: "Reference"
+          Value: "cfn"
+      # .............................      
+      SecurityGroupIngress:
+        - Description: "Webserver http access."
+          IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+        - Description: "LoadBalancer all port access."
+          IpProtocol: "tcp"
+          FromPort: 1
+          ToPort: 65535
+          SourceSecurityGroupId:
+            !GetAtt PublicEcsALBSecurityGroup.GroupId
+
+
+  # ------------------------------------------
+  # --- Public ECS ALB Security Group
+  PublicEcsALBSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    # .............................
+    Properties:
+      GroupDescription: "Application Loadbalancer Security Group"
+      GroupName: !Sub "${ProjectName}-alb"
+      VpcId: !Ref VPCID
+      # .............................
+      Tags:
+        -
+          Key: "Name"
+          Value: !Sub "alb-${ProjectName}"
+        - 
+          Key: "Project"
+          Value: "demo"
+        - 
+          Key: "Function"
+          Value: "cert-devops"
+        - 
+          Key: "Reference"
+          Value: "cfn"
+      # .............................      
+      SecurityGroupIngress:
+        - Description: "Loadbalancer http access."
+          IpProtocol: "tcp"
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+
+  # ------------------------------------------
+  # --- Private Subnet Security Group
+  #PrivateEcsSecurityGroup:
+  #  Type: "AWS::EC2::SecurityGroup"
+  #  # .............................
+  #  Properties:
+  #    GroupDescription: "Private Subnet Security Group"
+  #    GroupName: !Sub "${ProjectName}-sg-priv-${AWS::Region}"
+  #    VpcId: !Ref VPCID
+  #    # .............................
+  #    Tags:
+  #      -
+  #        Key: "Name"
+  #        Value: !Sub "priv-${ProjectName}"
+  #      - 
+  #        Key: "Project"
+  #        Value: "demo"
+  #      - 
+  #        Key: "Function"
+  #        Value: "cert-devops"
+  #      - 
+  #        Key: "Reference"
+  #        Value: "cfn"
+
+  # ------------------------------------------
+  # --- Private Subnet Ingress SSH local only
+  #PrivateInboundRuleSSH:
+  #  Type: "AWS::EC2::SecurityGroupIngress"
+  #  # .............................
+  #  Properties:
+  #    GroupId:
+  #      !GetAtt PrivateEcsSecurityGroup.GroupId
+  #    IpProtocol: "tcp"
+  #    FromPort: 22
+  #    ToPort: 22
+  #    SourceSecurityGroupId:
+  #      !GetAtt PublicEcsSecurityGroup.GroupId
+
+  # ------------------------------------------
+  # --- Private Subnet Ingress ICMP local only
+  #PrivateInboundRuleICMP:
+  #  Type: "AWS::EC2::SecurityGroupIngress"
+  #  # .............................
+  #  Properties:
+  #    GroupId:
+  #      !GetAtt PrivateEcsSecurityGroup.GroupId
+  #    IpProtocol: "icmp"
+  #    FromPort: 8
+  #    ToPort: -1
+  #    SourceSecurityGroupId:
+  #      !GetAtt PublicEcsSecurityGroup.GroupId
+
+
+# ==========================================
+# Outputs: {}
+Outputs:
+
+  # ------------------------------------------
+  # --- Public Security Group Id
+  PublicEcsSecurityGroupId:
+    Description: "Public SG Resource ID"
+    Value: !Ref PublicEcsSecurityGroup
+
+  # ------------------------------------------
+  # --- Public ALB Security Group Id
+  PublicEcsALBSecurityGroupId:
+    Description: "Public ALB Security Group ID"
+    Value: !Ref PublicEcsALBSecurityGroup
+
+  # ------------------------------------------
+  # --- Private Security Group Id
+  #PrivateEcsSecurityGroupId:
+  #  Description: "Private SG Resource ID"
+  #  Value: !Ref PrivateEcsSecurityGroup
+

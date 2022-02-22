@@ -1,0 +1,277 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  A VPC declaration comprising a public and private subnet, spaning two
+  availability zones. The following auxillary components are included here:
+
+  Public & Private Route Tables.
+  An Internet Gatway.
+
+  CIDR Allocations:
+
+  Public Subnet Total      : 10.0.128.0/18
+  Availability Zone A CIDR : 10.0.128.0/20
+  Availability Zone B CIDR : 10.0.144.0/20
+
+  Private Subnet Total     : 10.0.0.0/17
+  Availability Zone A CIDR : 10.0.0.0/19
+  Availability Zone B CIDR : 10.0.32.0/19
+
+# ------------------------------------------
+
+
+# ==========================================
+Metadata: {}
+# Metadata:
+
+
+# ==========================================
+# Parameters {}
+Parameters:
+
+  # ------------------------------------------
+  # --- The Project Name
+  ProjectName:
+    Description: "Name of this particular project"
+    Type: String
+
+
+# ==========================================
+Resources:
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #         TOP LEVEL CIDR DEFINITION
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  # ------------------------------------------
+  # --- VPC Definition
+  VPC:
+    Type: "AWS::EC2::VPC"
+    # .............................
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: "Name"
+          Value:
+            !Sub "${ProjectName}-vpc"
+
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #         SUBNET DEFINITIONS
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  # ------------------------------------------
+  # --- AZ-A Public Subnet
+  PublicEcsSubnetA:
+    Type: "AWS::EC2::Subnet"
+    # .............................
+    Properties:
+      CidrBlock: "10.0.128.0/20"
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        'Fn::Select':
+          - '0'
+          - 'Fn::GetAZs':
+              Ref: 'AWS::Region'
+      Tags:
+        - Key: "Name"
+          Value:
+            !Sub "pubA-${ProjectName}"
+
+  # ------------------------------------------
+  # --- AZ-B Public Subnet
+  PublicEcsSubnetB:
+    Type: "AWS::EC2::Subnet"
+    # .............................
+    Properties:
+      CidrBlock: "10.0.144.0/20"
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        'Fn::Select':
+          - '1'
+          - 'Fn::GetAZs':
+              Ref: 'AWS::Region'
+      Tags:
+        - Key: "Name"
+          Value:
+            !Sub "pubB-${ProjectName}"
+
+  # ------------------------------------------
+  # --- AZ1 Private Subnet
+  PrivateEcsSubnetA:
+    Type: "AWS::EC2::Subnet"
+    # .............................
+    Properties:
+      CidrBlock: "10.0.0.0/19"
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        'Fn::Select':
+          - '0'
+          - 'Fn::GetAZs':
+              Ref: 'AWS::Region'
+      Tags:
+        - Key: "Name"
+          Value:
+            !Sub "privA-${ProjectName}"
+
+  # ------------------------------------------
+  # --- AZ-B Private Subnet
+  PrivateEcsSubnetB:
+    Type: "AWS::EC2::Subnet"
+    # .............................
+    Properties:
+      CidrBlock: "10.0.32.0/19"
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        'Fn::Select':
+          - '1'
+          - 'Fn::GetAZs':
+              Ref: 'AWS::Region'
+      Tags:
+        - Key: "Name"
+          Value:
+            !Sub "privB-${ProjectName}"
+
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #         ROUTE TABLE DEFINITIONS
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  # ------------------------------------------
+  # --- Public Route Table
+  RouteTablePublic:
+    Type: "AWS::EC2::RouteTable"
+    # .............................
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "Name"
+          Value:
+            !Sub "${ProjectName}-PubRoute"
+
+  # ------------------------------------------
+  RouteTablePublicAssociationA:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    # .............................
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref PublicEcsSubnetA
+
+  # ------------------------------------------
+  RouteTablePublicAssociationB:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    # .............................
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref PublicEcsSubnetB
+
+  # ------------------------------------------
+  RouteTablePublicRoute0:
+    Type: "AWS::EC2::Route"
+    # .............................
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      RouteTableId: !Ref RouteTablePublic
+      GatewayId: !Ref Igw
+
+  # ------------------------------------------
+  # --- Private A Route Table
+  RouteTablePrivateA:
+    Type: "AWS::EC2::RouteTable"
+    # .............................
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "Name"
+          Value:
+            !Sub "${ProjectName}-PrivRouteA"
+
+  # ------------------------------------------
+  RouteTablePrivateAAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    # .............................
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateA
+      SubnetId: !Ref PrivateEcsSubnetA
+
+  # ------------------------------------------
+  # --- Private B Route Table
+  RouteTablePrivateB:
+    Type: "AWS::EC2::RouteTable"
+    # .............................
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: "Name"
+          Value:
+            !Sub "${ProjectName}-PrivRouteB"
+  # ------------------------------------------
+  RouteTablePrivateBAssociation1:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    # .............................
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateB
+      SubnetId: !Ref PrivateEcsSubnetB
+
+
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #         GATEWAY DEFINITIONS
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  # ------------------------------------------
+  # --- Internet Gateway
+  Igw:
+    Type: "AWS::EC2::InternetGateway"
+    # .............................
+    Properties: {}
+
+  # ------------------------------------------
+  # --- Internet Gateway Attachment
+  IGWAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    # .............................
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref Igw
+
+
+# ==========================================
+# Outputs: {}
+Outputs:
+
+  # ------------------------------------------
+  # ---Top Level VPCID Export
+  VPCID:
+    Description: "VPC ID"
+    Value: !Ref VPC
+
+  # ------------------------------------------
+  # ---Public Subnet AZ-A Export
+  PublicEcsSubnetIdA:
+    Description: "Public Subnet ID AZ-A"
+    Value: !Ref PublicEcsSubnetA
+
+  # ------------------------------------------
+  # ---Public Subnet AZ-B Export
+  PublicEcsSubnetIdB:
+    Description: "Public Subnet ID AZ-B"
+    Value: !Ref PublicEcsSubnetB
+
+  # ------------------------------------------
+  # ---Private Subnet AZ-A Export
+  PrivateEcsSubnetIdA:
+    Description: "Private Subnet ID AZ-A"
+    Value: !Ref PrivateEcsSubnetA
+
+  # ------------------------------------------
+  # ---Private Subnet AZ-B Export
+  PrivateEcsSubnetIdB:
+    Description: "Private Subnet ID AZ-B"
+    Value: !Ref PrivateEcsSubnetB
