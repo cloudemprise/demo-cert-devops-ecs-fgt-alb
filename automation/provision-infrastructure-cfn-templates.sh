@@ -205,9 +205,9 @@ find -L ./cfn-templates -type f -name "*.yaml" ! -path "*/scratch/*" -print0 |
 
 # ___
 TEMPLATE_URL="https://${PROJECT_BUCKET}.s3.${AWS_REGION}.amazonaws.com/\
-${PROJECT_PREFIX}/${PROJECT_NAME}/cfn-templates/${PROJECT_NAME}-cfn.yaml"
+${PROJECT_PREFIX}/${PROJECT_NAME}/cfn-templates/demo-cert-devops-ecs-fgt-alb-cfn.yaml"
 # ___
-echo "Cloudformation Stack Creation Initiated .......: "
+echo "Cloudformation Stack Creation Initiated .......: $STACK_NAME"
 echo "Cloudformation Stack Template URL .............: $TEMPLATE_URL"
 # ___
 STACK_ID=$(aws cloudformation create-stack \

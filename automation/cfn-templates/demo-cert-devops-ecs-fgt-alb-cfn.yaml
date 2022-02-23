@@ -189,7 +189,9 @@ Resources:
         PublicEcsTargetGroupArn:
           !GetAtt PublicEcsTargetGroupDef.Outputs.PublicEcsTargetGroupArn
         IamEcsTaskExecutionRoleArn:
-          !GetAtt IamDef.Outputs.IamEcsTaskExecuteRoleArn
+          !GetAtt IamDef.Outputs.IamEcsTaskExecutionRoleArn
+        IamEcsTaskContainerRoleArn:
+          !GetAtt IamDef.Outputs.IamEcsTaskContainerRoleArn
         PublicEcsLogGroupName:
           !GetAtt PublicEcsLogsGroupDefs.Outputs.PublicEcsLogGroupName
       TimeoutInMinutes: 7

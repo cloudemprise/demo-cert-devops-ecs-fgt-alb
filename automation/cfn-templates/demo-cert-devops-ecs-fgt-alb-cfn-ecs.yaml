@@ -58,6 +58,12 @@ Parameters:
     Type: String
 
   # ------------------------------------------
+  # --- ECS Task Container Role ARN
+  IamEcsTaskContainerRoleArn:
+    Description: "ECS Task Container Role ARN"
+    Type: String
+
+  # ------------------------------------------
   # --- ECS Task Execution Role ARN
   PublicEcsLogGroupName:
     Description: "Public ECS Log Group Name"
@@ -131,21 +137,25 @@ Resources:
       Memory: "512"
       # .............................
       ExecutionRoleArn: !Ref IamEcsTaskExecutionRoleArn
+      TaskRoleArn: !Ref IamEcsTaskContainerRoleArn
       # .............................
       ContainerDefinitions:
         # .............................
         -
-          Name: !Sub "${ProjectName}-container"
+          Name: !Sub "${ProjectName}-dckr"
           # .............................
           Image: "httpd:2.4"
+          Essential: true
+          # optional for fargate
           Cpu: 256
           MemoryReservation: 512
           # .............................
           PortMappings:
             -
-              ContainerPort: 80
-              HostPort: 80
               Protocol: "tcp"
+              ContainerPort: 80
+              # awsvpc: leave blank for dynamic
+              HostPort: 80
           # .............................
           EntryPoint: 
             - "sh"
@@ -153,8 +163,6 @@ Resources:
           Command:
             -
               "/bin/sh -c \"echo '<html> <head> <title>Amazon ECS Sample App</title> <style>body {margin-top: 40px; background-color: #333;} </style> </head><body> <div style=color:white;text-align:center> <h1>Amazon ECS Sample App</h1> <h2>Congratulations!</h2> <p>Your application is now running on a container in Amazon ECS.</p> </div></body></html>' >  /usr/local/apache2/htdocs/index.html && httpd-foreground\""
-          # .............................
-          Essential: true
           # .............................
           LogConfiguration: 
             LogDriver: "awslogs"
@@ -183,7 +191,7 @@ Resources:
       LoadBalancers:
         -
           TargetGroupArn: !Ref PublicEcsTargetGroupArn
-          ContainerName: !Sub "${ProjectName}-container"
+          ContainerName: !Sub "${ProjectName}-dckr"
           ContainerPort: 80
       HealthCheckGracePeriodSeconds: 0
       # .............................
