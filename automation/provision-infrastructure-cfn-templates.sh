@@ -172,10 +172,26 @@ echo "The Script Caller userid ......................: $AWS_USERID_CLI"
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
+
 #----------------------------------------------
-# Upload Cloudformation Template artifacts to S3
+# Create cloudformation stack files from local templates
+find -L ./cfn-templates -type f -name "stack*.yaml" ! -path "*/scratch/*" -print0 |
+# -L : Follow symbolic links
+  while IFS= read -r -d '' FILE
+  do
+    if [[ ! -s "$FILE" ]]; then
+      echo "Invalid Cloudformation Template Document ......: $FILE"
+      exit 1
+    else
+      # Copy/Rename stack via parameter expansion
+      cp "$FILE" "${FILE//stack/$PROJECT_NAME}"
+    fi
+  done
+# ...
+# ---
+# Upload cloudformation stack file artifacts to S3
 PROJECT_LOCALE="${PROJECT_BUCKET}/${PROJECT_PREFIX}/${PROJECT_NAME}"
-find -L ./cfn-templates -type f -name "*.yaml" ! -path "*/scratch/*" -print0 |
+find -L ./cfn-templates -type f -name "$PROJECT_NAME*.yaml" ! -path "*/scratch/*" -print0 |
 # -L : Follow symbolic links
   while IFS= read -r -d '' FILE
   do
@@ -183,7 +199,7 @@ find -L ./cfn-templates -type f -name "*.yaml" ! -path "*/scratch/*" -print0 |
       echo "Invalid Cloudformation Template Document ......: $FILE"
       exit 1
       # ...
-    elif (aws s3 cp "$FILE" "s3://$PROJECT_LOCALE${FILE#.}" --profile "$AWS_PROFILE" \
+    elif (aws s3 mv "$FILE" "s3://$PROJECT_LOCALE${FILE#.}" --profile "$AWS_PROFILE" \
           --region "$AWS_REGION" > /dev/null)
     then
       echo "Uploading Cloudformation Template to S3 .......: s3://$PROJECT_LOCALE${FILE#.}"
@@ -205,7 +221,7 @@ find -L ./cfn-templates -type f -name "*.yaml" ! -path "*/scratch/*" -print0 |
 
 # ___
 TEMPLATE_URL="https://${PROJECT_BUCKET}.s3.${AWS_REGION}.amazonaws.com/\
-${PROJECT_PREFIX}/${PROJECT_NAME}/cfn-templates/demo-cert-devops-ecs-fgt-alb-cfn.yaml"
+${PROJECT_PREFIX}/${PROJECT_NAME}/cfn-templates/${PROJECT_NAME}-cfn.yaml"
 # ___
 echo "Cloudformation Stack Creation Initiated .......: $STACK_NAME"
 echo "Cloudformation Stack Template URL .............: $TEMPLATE_URL"
